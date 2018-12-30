@@ -2,7 +2,7 @@
 
 A bot that post messages for every seperate channel it joins. User can set up conditions for target naver cafe or reddit to crawling board and post them into that channel.
 
-![Error-Collector](http://errorcollector2.azurewebsites.net/img/example)
+![Error-Collector](http://errorcollector2.azurewebsites.net/img/example.PNG)
 
 ## Setup
 
