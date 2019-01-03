@@ -4,13 +4,12 @@ const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
 const schedule = require('node-schedule');
 const JsonDB = require('node-json-db');
+const colors = require('./colors.json');
 const channel = require('./channel');
 
 const DB = new JsonDB('crawler', true, false);
 
-const colorNaver = '#1DDB16';
-const colorError = '#FF0000';
-const colorRequest = '#0054FF';
+
 
 
 const requestOptions  = { 
@@ -20,7 +19,7 @@ const requestOptions  = {
 	,encoding: null
 };
 
-const NaverCafeCrawlingLoop = (uri, title, color, callback) => {
+const NaverCafeCrawlingLoop = (uri, mainurl, cafeName, channelId, color, callback) => {
     var naverlist = [];
     requestOptions.uri = uri;
     request(requestOptions, (err, res, body) => {
@@ -30,15 +29,15 @@ const NaverCafeCrawlingLoop = (uri, title, color, callback) => {
         $('div.article-board').each(function (i, element) {
             if ($(this).find($('form')).attr('name') === "ArticleList") {
                 $(this).find('.board-list').each(function (i, element) {
-                    var texttitle = $(this).find('span.aaa').find('a').text();
-                    if(!DBtitleFindOrCreate(texttitle))
+                    var texttitle = $(this).find('span.aaa').children().first().text();
+                    if(!DBtitleFindOrCreate(cafeName, channelId, texttitle))
                     {
-                        var texthref = $(this).find('span.aaa').find('a').attr("href");
+                        var texthref = $(this).find('span.aaa').children().first().attr("href");
                     
                         const message = {
                             attachments: [{
-                                title: title,
-                                text: '<https://cafe.naver.com/monstersuperleague' + texthref + '|' + texttitle + '>',                            
+                                title: cafeName,
+                                text: '<' + mainurl + texthref + '|' + texttitle + '>',                            
                                 color: color,
                                 thumb_url: "https://errorcollector2.azurewebsites.net/img/naver_icon.PNG",
                                 footer: "Error Collector",
@@ -52,50 +51,99 @@ const NaverCafeCrawlingLoop = (uri, title, color, callback) => {
             }
         });
 
-        callback(naverlist);
+        callback(naverlist, channelId);
     }
     );
 };
 
 const crawlingOriginFunction = () => 
 {
-    console.log("loggin at " + moment().format());
-    NaverCafeCrawlingLoop('https://cafe.naver.com/ArticleList.nhn?search.clubid=28196706&search.menuid=65&search.boardtype=L', "네이버 카페 건의사항", colorRequest, CrawlingCallback);
-    NaverCafeCrawlingLoop('https://cafe.naver.com/ArticleList.nhn?search.clubid=28196706&search.menuid=50&search.boardtype=L', "네이버 카페 오류제보", colorError, CrawlingCallback);
+    console.log("logging at " + moment().format());
+    crawlingCafeAll();
 };
 
+const crawlingCafeAll = () =>
+{
+    let channels = false;
+    channels = DB.getData(`/`);
+    
+    if(channels)
+    {
+        for(var channelId in channels){
+            var cafes = channels[channelId].cafe;
+            for(var cafeName in cafes)
+                NaverCafeCrawlingLoop(cafes[cafeName].url, cafes[cafeName].mainurl,
+                     cafeName, channelId, cafes[cafeName].color, CrawlingCallback);
+        }
+    }  
+};
 
-const CrawlingCallback = (list) => {
+const CrawlingCallback = (list, channelId) => {
     list.forEach(function (element) {
 
-        channel.sendNotification(element, process.env.CHANNEL_ID);
+        channel.sendNotification(element, channelId);
     }, this);
 };
 
-const DBtitleFindOrCreate = (title) => 
+const DBtitleFindOrCreate = (cafe, channelId, title) => 
 {
-  let channel = false;
-  try { channel = DB.getData(`/monstersuperleague/title/${title}`); } catch (error) {
+  let result = false;
+  try { result = DB.getData(`/${channelId}/cafe/${cafe}/title/${title}`); } catch (error) {
     console.error(`${title} not found`);
   }
 
   // save channel if one isn't found
-  if (!channel) {
-    DB.push(`/monstersuperleague/title/${title}`, 1);
+  if (!result) {
+    DB.push(`/${channelId}/cafe/${cafe}/title/${title}`, 1);
     return false;
   }
   else
       return true;
 };
 
-const DBtitleRemove = (title) => {
-  DB.delete(`/monstersuperleague/title/${title}`);
+const DBtitleRemove = (cafe, channelId, title) => {
+  DB.delete(`/${channelId}/cafe/${cafe}/title/${title}`);
+};
+
+const DBtitleRemoveAll = (channelId) => {
+  var cafes = DB.getData(`/${channelId}/cafe`);
+  for(var cafeName in cafes)
+  {
+      cafes[cafeName].title = {};
+  }
+  DB.delete(`/${channelId}/cafe`);
+  DB.push(`/${channelId}/cafe`, cafes);
+};
+
+const DBcafeFindOrCreate = (cafe, url, mainurl, channelId, color) => 
+{
+  let result = false;
+  try { result = DB.getData(`/cafe/${cafe}`); } catch (error) {
+    console.error(`${cafe} not found`);
+  }
+
+  // save cafe if one isn't found
+  if (!result) {
+    DB.push(`/${channelId}/cafe/${cafe}/url`, url);
+    DB.push(`/${channelId}/cafe/${cafe}/color`, color);
+    DB.push(`/${channelId}/cafe/${cafe}/mainurl`, mainurl);
+    return 1;
+  }
+  else
+      return 2;
+};
+
+const DBcafeRemove = (cafe, channelId) => {
+  DB.delete(`/${channelId}/cafe/${cafe}`);
 };
 
 schedule.scheduleJob('0 */1 * * * *', crawlingOriginFunction);
-schedule.scheduleJob('0 */1 * * * *', function(){
+schedule.scheduleJob('0 */10 * * * *', function(){
     request('http://bnscalculator.azurewebsites.net/');
 });
-schedule.scheduleJob('0 */1 * * * *', function(){
+schedule.scheduleJob('0 */10 * * * *', function(){
     request('http://bnsmacketcrawler.azurewebsites.net/');
 });
+
+
+module.exports = { DBcafeFindOrCreate, DBcafeRemove, DBtitleRemoveAll};

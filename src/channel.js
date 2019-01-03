@@ -1,7 +1,7 @@
 const JsonDB = require('node-json-db');
 const qs = require('querystring');
 const axios = require('axios');
-
+const colors = require('./colors.json');
 
 const DB = new JsonDB('channels', true, false);
 
@@ -31,6 +31,83 @@ const sendNotification = (messageJSON, channelId) => {
   sendMessage.then(logResult);
 };
 
+// Send OK messages to a Slack channel using chat.postMessage method
+const sendOK = (textmessage, channelId) => {
+  const bodyVars = {
+    token: process.env.SLACK_TOKEN,
+    channel: channelId,
+  };
+  const message = {
+      "attachments": [
+          {
+              "title": "Message",
+              "pretext": "_Success_",
+              "text": textmessage,
+              "color" : colors.green,
+              "mrkdwn_in": [
+                  "pretext"
+              ]
+          }
+      ]
+  }
+  
+  // overwrite or add in the token and channel
+  const body = Object.assign({}, message, bodyVars);
+  if (message.attachments) {
+    body.attachments = JSON.stringify(message.attachments);
+  }
+
+  const sendMessage = axios.post('https://slack.com/api/chat.postMessage',
+    qs.stringify(body));
+
+  sendMessage.then(logResult);
+};
+
+const sendFail = (textmessage, channelId) => {
+  const bodyVars = {
+    token: process.env.SLACK_TOKEN,
+    channel: channelId,
+  };
+  const message = {
+      "attachments": [
+          {
+              "title": "Message",
+              "pretext": "_Failed_",
+              "text": textmessage,
+              "color" : colors.red,
+              "mrkdwn_in": [
+                  "pretext"
+              ]
+          }
+      ]
+  }
+  
+  // overwrite or add in the token and channel
+  const body = Object.assign({}, message, bodyVars);
+  if (message.attachments) {
+    body.attachments = JSON.stringify(message.attachments);
+  }
+
+  const sendMessage = axios.post('https://slack.com/api/chat.postMessage',
+    qs.stringify(body));
+
+  sendMessage.then(logResult);
+};
+
+//
+const sendDialog = (dialog, trigger_id, channel_id) => {
+
+  const body = {
+    "token" : process.env.SLACK_TOKEN,
+    "trigger_id" : trigger_id,
+    "dialog" : JSON.stringify(dialog)
+  };
+
+  const sendMessage = axios.post('https://slack.com/api/dialog.open',
+    qs.stringify(body));
+    
+  sendMessage.then(logResult);
+};
 
 const findOrCreate = (channelId) => 
 {
@@ -65,4 +142,4 @@ const remove = (channelId) => {
   DB.delete(`/${channelId}`);
 };
 
-module.exports = { findOrCreate, findByNonce, sendNotification, remove };
+module.exports = { sendOK, sendFail, sendDialog, findOrCreate, findByNonce, sendNotification, remove };
