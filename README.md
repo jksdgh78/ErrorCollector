@@ -1,8 +1,8 @@
-# Per-channel webhook template
+# Per-channel Naver Cafe / Reddit comment webhook
 
-A bot that creates an incoming webhook URL for every channel it joins. Using the webhook URL, any user can set up integrations to post notifications into that channel.
+A bot that post messages for every seperate channel it joins. User can set up conditions for target naver cafe or reddit to crawling board and post them into that channel.
 
-![channel-webhook-template](https://cloud.githubusercontent.com/assets/700173/26604820/75c658d4-4540-11e7-951d-f79a3d09a0fc.gif)
+![Error-Collector](http://errorcollector2.azurewebsites.net/img/example.PNG)
 
 ## Setup
 
