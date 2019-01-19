@@ -32,7 +32,7 @@ const sendNotification = (messageJSON, channelId) => {
 };
 
 // Send OK messages to a Slack channel using chat.postMessage method
-const sendOK = (textmessage, channelId) => {
+const sendOK = (textmessage, channelId, res) => {
   const bodyVars = {
     token: process.env.SLACK_TOKEN,
     channel: channelId,
@@ -61,9 +61,10 @@ const sendOK = (textmessage, channelId) => {
     qs.stringify(body));
 
   sendMessage.then(logResult);
+  res.status(200).send("");
 };
 
-const sendFail = (textmessage, channelId) => {
+const sendFail = (textmessage, channelId, res) => {
   const bodyVars = {
     token: process.env.SLACK_TOKEN,
     channel: channelId,
@@ -92,6 +93,7 @@ const sendFail = (textmessage, channelId) => {
     qs.stringify(body));
 
   sendMessage.then(logResult);
+  res.status(400).send("");
 };
 
 //

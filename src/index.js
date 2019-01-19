@@ -41,30 +41,10 @@ app.get('/img/:name', (req, res) => {
     });
 });
 
-/*
- * Endpoint for the app to receive messages.
- * POST requests to this endpoint must have a nonce in the URL that matches
- * the nonce associated with a channel in the datastore.
- */
-app.post('/incoming/:channel_nonce', (req, res) => {
-  const channelId = channel.findByNonce(req.params.channel_nonce);
-  if (channelId) {
-    const contype = req.headers['content-type'];
-    let body = req.body;
-    // Parse the body as JSON if the content type is application/json.
-    // Don't do anything for form-urlencoded body types
-    if (contype.indexOf('application/json') > 0) { body = JSON.parse(req.body); }
-
-    channel.sendNotification(body, channelId);
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(404);
-  }
-});
-
 app.post('/slash/refresh', (req, res) => {
   if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
     crawler.DBtitleRemoveAll( req.body.channel_id);
+    crawler.crawlingOriginFunction();
     res.sendStatus(200);
   }
 });
@@ -75,7 +55,7 @@ app.post('/slash/addcafe', (req, res) => {
     var dialog = {
       "callback_id": "addcafe",
       "title": "Add a Naver cafe",
-      "submit_label": "Request",
+      "submit_label": "Add",
       "notify_on_cancel": true,
       "state": "Limo",
       "elements": [
@@ -122,6 +102,42 @@ app.post('/slash/addcafe', (req, res) => {
   } else { res.sendStatus(500); }
 });
 
+app.post('/slash/removecafe', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    var dialog = {
+      "callback_id": "removecafe",
+      "title": "Remove a Naver cafe",
+      "submit_label": "Remove",
+      "notify_on_cancel": true,
+      "state": "Limo",
+      "elements": [
+          {
+              "type": "text",
+              "label": "카페 명칭",
+              "name": "text_name"
+          }
+      ]
+    };
+    
+    channel.sendDialog(dialog, req.body.trigger_id, req.body.channel_id);
+  } else{
+    channel.sendFail('토큰이 이상해요!', payload.channel.id, res);
+  }
+});
+
+app.post('/slash/eclist', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    var result = crawler.DBcafeGetNameAll(req.body.channel_id);
+    result.forEach(function(element) {
+      const message = {text: element};
+      channel.sendNotification(message, req.body.channel_id);
+    }, this);
+    res.sendStatus(200);
+  } else{
+     channel.sendFail('토큰이 이상해요!', payload.channel.id, res);
+  }
+});
+
 const requestOptions  = { 
 	method: "GET"
 	,uri: ""
@@ -133,6 +149,12 @@ app.post('/action_endpoint', (req, res) => {
   var body = req.body;
   var payload = JSON.parse(body.payload);
   
+  if(payload.type === 'dialog_cancellation') 
+  {
+    res.sendStatus(200);
+    return;
+  }
+      
   if (payload.token === process.env.SLACK_VERIFICATION_TOKEN) {
     
     if(payload.callback_id == "addcafe")
@@ -150,24 +172,38 @@ app.post('/action_endpoint', (req, res) => {
               payload.submission.text_mainurl, payload.channel.id, colors[payload.submission.color]);
             
             if(result === 1)
-              channel.sendOK(payload.submission.text_name + " 등록에 성공했습니다." , payload.channel.id);
+            {
+              channel.sendOK(payload.submission.text_name + " 등록에 성공했습니다." , payload.channel.id, res);
+            }
             else if(result === 2 )
-              channel.sendFail(payload.submission.text_name + "가 이미 등록되어 있습니다." , payload.channel.id);
+            {
+              channel.sendFail(payload.submission.text_name + "가 이미 등록되어 있습니다." , payload.channel.id, res);
+            } 
           }
           else
           {
-            channel.sendFail("네이버 카페 URL 이 이상해요" , payload.channel.id);
+            channel.sendFail("네이버 카페 URL 이 이상해요" , payload.channel.id, res);
           }
       });
-      
-      
-      res.status(200).send("");
     }
-    
-    
-  } else {
-
-    channel.sendFail('토큰이 이상해요!', payload.channel.id); 
+    else if(payload.callback_id == "removecafe")
+    {
+      var cafename = payload.submission.text_name;
+      var result = crawler.DBcafeFind(cafename, payload.channel.id);
+      if(result)
+      {
+        crawler.DBcafeRemove(cafename, payload.channel.id);
+        channel.sendOK('삭제에 성공했습니다.', payload.channel.id, res);
+      }
+      else
+      {
+        channel.sendFail('카페를 찾을 수 없어요!', payload.channel.id, res);
+      }
+    }
+  } 
+  else
+  {
+    channel.sendFail('토큰이 이상해요!', payload.channel.id, res); 
   }
 });
 

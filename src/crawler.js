@@ -117,10 +117,7 @@ const DBtitleRemoveAll = (channelId) => {
 
 const DBcafeFindOrCreate = (cafe, url, mainurl, channelId, color) => 
 {
-  let result = false;
-  try { result = DB.getData(`/cafe/${cafe}`); } catch (error) {
-    console.error(`${cafe} not found`);
-  }
+  let result = DBcafeFind(cafe, channelId);
 
   // save cafe if one isn't found
   if (!result) {
@@ -133,10 +130,32 @@ const DBcafeFindOrCreate = (cafe, url, mainurl, channelId, color) =>
       return 2;
 };
 
+const DBcafeFind = (cafe, channelId) => 
+{
+  let result = false;
+  try { result = DB.getData(`/${channelId}/cafe/${cafe}`); } catch (error) {
+    console.error(`${cafe} not found`);
+  }
+  
+  return result;
+};
+
+const DBcafeGetNameAll = (channelId) => {
+  var result = [];
+  
+  var cafes = DB.getData(`/${channelId}/cafe`);
+  for(var cafeName in cafes)
+  {
+      result.push(cafeName);
+  }
+  
+  return result;
+};
+
 const DBcafeRemove = (cafe, channelId) => {
   DB.delete(`/${channelId}/cafe/${cafe}`);
 };
 
-schedule.scheduleJob('0 */1 * * * *', crawlingOriginFunction);
+schedule.scheduleJob('0 */10 * * * *', crawlingOriginFunction);
 
-module.exports = { DBcafeFindOrCreate, DBcafeRemove, DBtitleRemoveAll};
+module.exports = { DBcafeFindOrCreate, DBcafeFind, DBcafeGetNameAll, DBcafeRemove, DBtitleRemoveAll, crawlingOriginFunction};
