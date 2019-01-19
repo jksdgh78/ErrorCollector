@@ -176,9 +176,6 @@ app.post('/action_endpoint', (req, res) => {
  * Handles:
  *   - url_verification: Returns challenge token sent when present.
  *   - event_callback: Confirm verification token & handle `member_joined_channel` events.
- { payload: '{"type":"dialog_submission","token":"CtuSqtZAVhxy363KkoxWeyZo","action_ts":"1546337605.139374","team":{"id":"T024QV52Z","domain":"smartstudy"},"user":{"id":"UEWPT7KK7","name":"gomji"},"channel":{"id":"CF0846S9E","name":"unit_game_error"},"submission":{"loc_origin":"w","loc_destination":"w"},"callback_id":"ryde-46e2b0","response_url":"https:\\/\\/hooks.slack.com\\/app\\/T024QV52Z\\/515823036118\\/LDiTrHGDeTj8Uo02TBCzLc0m","state":"Limo"}' }
- 
- 
  */
 app.post('/events', (req, res) => {
   switch (req.body.type) {
@@ -195,9 +192,9 @@ app.post('/events', (req, res) => {
         // handle member_joined_channel event that's emitted when the bot joins a channel
         if (event.type === 'app_mention') {
           const message = {
-            text: '왜요',
+            text: "도움말",
             attachments: [{
-              text: "",
+              text: "https://github.com/jksdgh78/ErrorCollector",
               color: '#7e1cc9',
             }],
           };

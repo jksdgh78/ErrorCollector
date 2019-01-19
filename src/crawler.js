@@ -138,12 +138,5 @@ const DBcafeRemove = (cafe, channelId) => {
 };
 
 schedule.scheduleJob('0 */1 * * * *', crawlingOriginFunction);
-schedule.scheduleJob('0 */10 * * * *', function(){
-    request('http://bnscalculator.azurewebsites.net/');
-});
-schedule.scheduleJob('0 */10 * * * *', function(){
-    request('http://bnsmacketcrawler.azurewebsites.net/');
-});
-
 
 module.exports = { DBcafeFindOrCreate, DBcafeRemove, DBtitleRemoveAll};
