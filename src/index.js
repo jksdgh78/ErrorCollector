@@ -48,7 +48,39 @@ app.post('/slash/refresh', (req, res) => {
     res.sendStatus(200);
   }
 });
- 
+
+app.post('/slash/spineon', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    
+    crawler.DBspineSetOrCreate(true, req.body.channel_id);
+    const message = {
+      text: "Spine Fairy",
+      attachments: [{
+        text: "ACTIVATED",
+        color: colors["green"],
+      }],
+    };
+    channel.sendNotification(message , req.body.channel_id);
+    res.sendStatus(200);
+  } else { res.sendStatus(500); }
+});
+
+app.post('/slash/spineoff', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    
+    crawler.DBspineSetOrCreate(false, req.body.channel_id);
+    const message = {
+      text: "Spine Fairy",
+      attachments: [{
+        text: "DE-ACTIVATED",
+        color: colors["red"],
+      }],
+    };
+    channel.sendNotification(message , req.body.channel_id);
+    res.sendStatus(200);
+  } else { res.sendStatus(500); }
+});
+
 app.post('/slash/addcafe', (req, res) => {
   if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
 
