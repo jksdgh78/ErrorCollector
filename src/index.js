@@ -7,9 +7,11 @@ const JsonDB = require('node-json-db');
 const fs = require('fs');
 const dotenv = require('dotenv');
 const url = require('url');
+const querystring = require('querystring');
 const result = dotenv.config();
 const channel = require('./channel');
 var crawler = require('./crawler');
+var route_jenkins = require('./route_jenkins')
 const colors = require('./colors.json');
 
 const DB = new JsonDB('users', true, false);
@@ -47,6 +49,94 @@ app.post('/slash/refresh', (req, res) => {
     crawler.crawlingOriginFunction();
     res.sendStatus(200);
   }
+});
+
+app.post('/slash/clientbuild', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_clientbuild(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/databuild', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_databuild(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/datadeploy', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_datadeploy(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/datadeploy', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_datadeploy(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/resourcebuild', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_resourcebuild(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/protobuild', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_protobuild(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/datadiff', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    route_jenkins.jenkins_datadiff(req, res);
+  }
+  else { res.sendStatus(500); }
+});
+
+app.post('/slash/addAlarm', (req, res) => {
+    if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+
+    var dialog = {
+      "callback_id": "addAlarm",
+      "title": "Add an Alarm to Channel",
+      "submit_label": "Add",
+      "notify_on_cancel": false,
+      "state": "Limo",
+      "elements": [
+          {
+              "type": "text",
+              "label": "알람 커스텀 메세지",
+              "name": "text_custom_message"
+          }
+      ]
+    };
+    
+    channel.sendDialog(dialog, req.body.trigger_id, req.body.channel_id);
+    res.sendStatus(200);
+  } else { res.sendStatus(500); }
+});
+
+app.post('/slash/removeAlarm', (req, res) => {
+  if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    
+    crawler.DBalarmSetOrCreate(false, "", req.body.channel_id);
+    const message = {
+      text: "Scrum Alarm",
+      attachments: [{
+        text: "DE-ACTIVATED",
+        color: colors["red"],
+      }],
+    };
+    channel.sendNotification(message , req.body.channel_id);
+    res.sendStatus(200);
+  } else { res.sendStatus(500); }
 });
 
 app.post('/slash/spineon', (req, res) => {
@@ -130,7 +220,7 @@ app.post('/slash/addcafe', (req, res) => {
     };
     
     channel.sendDialog(dialog, req.body.trigger_id, req.body.channel_id);
-
+    res.sendStatus(200);
   } else { res.sendStatus(500); }
 });
 
@@ -152,21 +242,31 @@ app.post('/slash/removecafe', (req, res) => {
     };
     
     channel.sendDialog(dialog, req.body.trigger_id, req.body.channel_id);
+    res.sendStatus(200);
   } else{
-    channel.sendFail('토큰이 이상해요!', payload.channel.id, res);
+    channel.sendFail('토큰이 이상해요!', req.body.channel_id, res);
   }
 });
 
-app.post('/slash/eclist', (req, res) => {
+app.post('/slash/cafelist', (req, res) => {
   if (req.body.token === process.env.SLACK_VERIFICATION_TOKEN) {
+    
     var result = crawler.DBcafeGetNameAll(req.body.channel_id);
-    result.forEach(function(element) {
-      const message = {text: element};
-      channel.sendNotification(message, req.body.channel_id);
-    }, this);
-    res.sendStatus(200);
+    
+    if(result != null)
+    {
+      result.forEach(function(element) {
+        const message = {text: element};
+        channel.sendNotification(message, req.body.channel_id);
+      }, this);
+      res.sendStatus(200);
+    }
+    else
+    {
+      channel.sendFail('채널에 등록된 수집 스케줄이 없습니다', req.body.channel_id, res);
+    }
   } else{
-     channel.sendFail('토큰이 이상해요!', payload.channel.id, res);
+     channel.sendFail('토큰이 이상해요!', req.body.channel_id, res);
   }
 });
 
@@ -194,6 +294,7 @@ app.post('/action_endpoint', (req, res) => {
       var queryData = url.parse(payload.submission.text_url, true).query;
       var uri = 'https://cafe.naver.com/ArticleList.nhn?search.clubid=' + queryData.clubid 
          + '&search.menuid=' + queryData.menuid + '&search.boardtype=L';
+      requestOptions.method = "GET";
       requestOptions.uri = uri;
       request(requestOptions, (err, res2, body) => {
           if (err) { return console.log(err); }
@@ -231,6 +332,177 @@ app.post('/action_endpoint', (req, res) => {
       {
         channel.sendFail('카페를 찾을 수 없어요!', payload.channel.id, res);
       }
+    }
+    else if(payload.callback_id == "addAlarm")
+    {
+      crawler.DBalarmSetOrCreate(true, payload.submission.text_custom_message, payload.channel.id);
+      channel.sendOK("스크럼 알람 추가\n커스텀 메세지 : " + payload.submission.text_custom_message,
+         payload.channel.id, res);
+    }
+    else if(payload.callback_id == "clientbuild")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            BUILD_TYPE: sm.select_build_type,
+            PLATFORM: sm.select_platform,
+            BUILD_VER: sm.text_build_version,
+            ANDROID_VER: sm.text_android_version,
+            IOS_VER: sm.text_ios_version
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-client-remote/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/clientbuild\n클라이언트 빌드 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/clientbuild\n클라이언트 빌드 요청에 실패", payload.channel.id, res);
+          }
+      });
+    }
+    else if(payload.callback_id == "databuild")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            BUILD_TYPE: sm.select_branch,
+            GAME_DATA: "YES",
+            GDOC_VERSION: sm.text_docs_version,
+            BASE_VERSION: sm.text_base_version,
+            SEND_SLACK_TO_DESIGN: sm.select_send_slack
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-resource/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/databuild\n데이터 빌드 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/databuild\n데이터 빌드 요청에 실패", payload.channel.id, res);
+          }
+      });
+    }
+    else if(payload.callback_id == "resourcebuild")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            BUILD_TYPE: sm.select_branch,
+            GAME_DATA: "NO",
+            BASE_VERSION: sm.text_base_version
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-resource/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/resourcebuild\n리소스 빌드 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/resourcebuild\n리소스 빌드 요청에 실패", payload.channel.id, res);
+          }
+      });
+    }
+    else if(payload.callback_id == "datadeploy")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            METHOD: sm.select_method,
+            DATA_VERSION: sm.text_data_version,
+            BRANCH: sm.select_branch,
+            SEND_SLACK_TO_DESIGN: sm.select_send_slack
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-server-deploy/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/datadeploy\n데이터 배포 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/datadeploy\n데이터 배포 요청에 실패", payload.channel.id, res);
+          }
+      });
+    }
+    else if(payload.callback_id == "protobuild")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            BUILD_TYPE: sm.select_branch
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-proto-build/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/protobuild\n프로토 빌드 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/protobuild\프로토 빌드 요청에 실패", payload.channel.id, res);
+          }
+      });
+    }
+    else if(payload.callback_id == "datadiff")
+    {
+      var sm = payload.submission;
+      var querystr = querystring.stringify(
+        { 
+            token: "tamagorpg",
+            STARTER: sm.text_starter, 
+            GDOC_VERSION: sm.text_docs_version,
+            DATA_VERSION: sm.text_data_version,
+            SEND_SLACK_TO_DESIGN: sm.select_send_slack
+        });
+        
+      requestOptions.method = "POST";
+      requestOptions.uri = "http://admin:11f5c6de712766c05c6c8d124857b658e7@13.209.155.201:8080/job/tamagorpg-data-diff/buildWithParameters?" + querystr;
+      console.log(requestOptions.uri);
+      request(requestOptions, (err, res2, body) => {
+          if (err) { return console.log(err); }
+          if(res2.statusCode === 200 || res2.statusCode === 201) 
+          {
+            channel.sendOK("/datadiff\n diff 요청 성공", payload.channel.id, res);
+          } 
+          else
+          {
+            channel.sendFail("/datadiff\ diff 요청에 실패", payload.channel.id, res);
+          }
+      });
     }
   } 
   else

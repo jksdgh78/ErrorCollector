@@ -41,7 +41,6 @@ const sendOK = (textmessage, channelId, res) => {
       "attachments": [
           {
               "title": "Message",
-              "pretext": "_Success_",
               "text": textmessage,
               "color" : colors.green,
               "mrkdwn_in": [
@@ -73,7 +72,6 @@ const sendFail = (textmessage, channelId, res) => {
       "attachments": [
           {
               "title": "Message",
-              "pretext": "_Failed_",
               "text": textmessage,
               "color" : colors.red,
               "mrkdwn_in": [

@@ -9,9 +9,6 @@ const channel = require('./channel');
 
 const DB = new JsonDB('crawler', true, false);
 
-
-
-
 const requestOptions  = { 
 	method: "GET"
 	,uri: ""
@@ -60,38 +57,6 @@ const crawlingOriginFunction = () =>
 {
     console.log("logging at " + moment().format());
     crawlingCafeAll();
-};
-
-const spineOriginFunction = () =>
-{
-    console.log("spine start");
-    let channels = false;
-    channels = DB.getData(`/`);
-    
-    if(channels)
-    {
-        var index = Math.floor(Math.random() * (5 - 1) + 1);
-        var thumb = "https://errorcollector2.azurewebsites.net/img/spine_fairy" + index + ".png";
-        console.log(thumb);
-        for(var channelId in channels){
-            var spine = channels[channelId].spine;
-            if(spine)
-            {
-                const message = 
-                {
-                    attachments: [{
-                        title: "척추 피시죠 <단호>",
-                        text : "|척|\n|추|",
-                        thumb_url : thumb,
-                        footer: "척추 요정",
-                        footer_icon: "https://errorcollector2.azurewebsites.net/img/E.PNG",
-                        ts: moment().unix()
-                    }],
-                };
-                channel.sendNotification(message , channelId);
-            }
-        }
-    }  
 };
 
 const crawlingCafeAll = () =>
@@ -147,11 +112,6 @@ const DBtitleRemoveAll = (channelId) => {
   DB.push(`/${channelId}/cafe`, cafes);
 };
 
-const DBspineSetOrCreate = (spine, channelId) => 
-{
-  DB.push(`/${channelId}/spine`, spine);
-};
-
 const DBcafeFindOrCreate = (cafe, url, mainurl, channelId, color) => 
 {
   let result = DBcafeFind(cafe, channelId);
@@ -167,15 +127,6 @@ const DBcafeFindOrCreate = (cafe, url, mainurl, channelId, color) =>
       return 2;
 };
 
-const DBGetSpine = (channelId) => 
-{
-    let result = false;
-    try {result = DB.getData(`/${channelId}/spine`);} catch(error) {
-        console.error(`${channelId} not found`);
-    }
-    return result;
-};
-
 const DBcafeFind = (cafe, channelId) => 
 {
   let result = false;
@@ -187,27 +138,166 @@ const DBcafeFind = (cafe, channelId) =>
 };
 
 const DBcafeGetNameAll = (channelId) => {
-  var result = [];
-  
-  var cafes = DB.getData(`/${channelId}/cafe`);
-  for(var cafeName in cafes)
-  {
-      result.push(cafeName);
-  }
-  
-  return result;
+    var result = [];
+    
+    try
+    {   
+        var cafes = DB.getData(`/${channelId}/cafe`);    
+    
+        for(var cafeName in cafes)
+        {
+            result.push(cafeName);
+        }
+    }
+    catch(e)
+    {
+        return null;
+    }
+    
+    return result; 
 };
 
 const DBcafeRemove = (cafe, channelId) => {
   DB.delete(`/${channelId}/cafe/${cafe}`);
 };
 
-var rule = new schedule.RecurrenceRule();
-rule.dayOfWeek = [new schedule.Range(1, 5)];
-rule.hour = [2, 6];
-rule.minute = 30;
+const spineOriginFunction = () =>
+{
+    console.log("spine start");
+    let channels = false;
+    channels = DB.getData(`/`);
+    
+    if(channels)
+    {
+        var index = Math.floor(Math.random() * (5 - 1) + 1);
+        var thumb = "https://errorcollector2.azurewebsites.net/img/spine_fairy" + index + ".png";
+        console.log(thumb);
+        for(var channelId in channels){
+            var spine = channels[channelId].spine;
+            if(spine)
+            {
+                const message = 
+                {
+                    attachments: [{
+                        title: "척추 피시죠 <단호>",
+                        text : "|척|\n|추|",
+                        thumb_url : thumb,
+                        footer: "척추 요정",
+                        footer_icon: "https://errorcollector2.azurewebsites.net/img/E.PNG",
+                        ts: moment().unix()
+                    }],
+                };
+                channel.sendNotification(message , channelId);
+            }
+        }
+    }  
+};
+
+const DBspineSetOrCreate = (spine, channelId) => 
+{
+  DB.push(`/${channelId}/spine`, spine);
+};
+
+const DBGetSpine = (channelId) => 
+{
+    let result = false;
+    try {result = DB.getData(`/${channelId}/spine`);} catch(error) {
+        console.error(`${channelId} not found`);
+    }
+    return result;
+};
+
+const alarmOriginFunction = (scrumType) =>
+{
+    console.log("alarm start");
+    let channels = false;
+    channels = DB.getData(`/`);
+    
+    if(channels)
+    {
+        for(var channelId in channels){
+            var alarm = channels[channelId].alarm;
+            if(alarm && alarm.active)
+            {
+                if(scrumType == 1)
+                {
+                    var thumb = "https://errorcollector2.azurewebsites.net/img/alarm_morning.png";
+                    const message =  
+                    {
+                        attachments: [{
+                            title: "오전 스크럼",
+                            text : alarm.customMessage,
+                            thumb_url : thumb,
+                            color : colors["green"],
+                            footer: "스크럼 알람",
+                            footer_icon: "https://errorcollector2.azurewebsites.net/img/E.PNG",
+                            ts: moment().unix()
+                        }],
+                    };
+                    
+                    channel.sendNotification(message , channelId);
+                }
+                else
+                {
+                    var thumb = "https://errorcollector2.azurewebsites.net/img/alarm_afternoon.png";
+                    const message =  
+                    {
+                        attachments: [{
+                            title: "오후 스크럼",
+                            text : alarm.customMessage,
+                            thumb_url : thumb,
+                            color : colors["blue"],
+                            footer: "스크럼 알람",
+                            footer_icon: "https://errorcollector2.azurewebsites.net/img/E.PNG",
+                            ts: moment().unix()
+                        }],
+                    };
+                    
+                    channel.sendNotification(message , channelId);
+                }
+            }
+        }
+    }  
+};
+
+const DBalarmSetOrCreate = (active, customMessage, channelId) => 
+{
+  DB.push(`/${channelId}/alarm/active`, active);
+  DB.push(`/${channelId}/alarm/customMessage`, customMessage);
+};
+
+const DBGetAlarm = (channelId) => 
+{
+    let result = false;
+    try {result = DB.getData(`/${channelId}/alarm`);} catch(error) {
+        console.error(`${channelId} not found`);
+    }
+    return result;
+};
+
+var spineRule = new schedule.RecurrenceRule();
+spineRule.dayOfWeek = [new schedule.Range(1, 5)];
+spineRule.hour = [2, 6];
+spineRule.minute = 30;
  
-schedule.scheduleJob(rule, spineOriginFunction);
+schedule.scheduleJob(spineRule, spineOriginFunction);
+
+var alarmRuleMorning = new schedule.RecurrenceRule();
+alarmRuleMorning.dayOfWeek = [new schedule.Range(1, 5)];
+alarmRuleMorning.hour = 0;
+alarmRuleMorning.minute = 0;
+schedule.scheduleJob(alarmRuleMorning, function(scrumType) { 
+        alarmOriginFunction(scrumType);
+    }.bind(null, 1));
+
+var alarmRuleAfterNoon = new schedule.RecurrenceRule();
+alarmRuleAfterNoon.dayOfWeek = [new schedule.Range(1, 5)];
+alarmRuleAfterNoon.hour = 9;
+alarmRuleAfterNoon.minute = 0;
+schedule.scheduleJob(alarmRuleAfterNoon, function(scrumType) { 
+        alarmOriginFunction(scrumType);
+    }.bind(null, 2));
+
 
 schedule.scheduleJob('0 */10 * * * *', crawlingOriginFunction);
 schedule.scheduleJob('0 */10 * * * *', function(){
@@ -218,4 +308,6 @@ schedule.scheduleJob('0 */10 * * * *', function(){
 });
 
 
-module.exports = { DBcafeFindOrCreate, DBcafeFind, DBcafeGetNameAll, DBcafeRemove, DBtitleRemoveAll, crawlingOriginFunction, DBspineSetOrCreate};
+module.exports = { DBcafeFindOrCreate, DBcafeFind, DBcafeGetNameAll, DBcafeRemove, 
+    DBtitleRemoveAll, crawlingOriginFunction, DBspineSetOrCreate,
+    DBalarmSetOrCreate};
